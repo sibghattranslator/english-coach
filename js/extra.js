@@ -35,11 +35,36 @@ function sayUr(t){
   }
   window.say(t,"ur-PK");
 }
+const MICERR={
+  "not-allowed":"The microphone is blocked. Click the lock icon in the address bar, set Microphone to Allow, and reload.",
+  "service-not-allowed":"The browser blocked speech recognition. Use Google Chrome and open the app from START.bat (localhost).",
+  "audio-capture":"No microphone found. Plug in or enable a microphone.",
+  "no-speech":"I did not hear anything. Press Space and speak clearly.",
+  "network":"Speech recognition needs the internet (Chrome sends audio to Google). Check your connection.",
+  "language-not-supported":"This browser does not support Urdu speech recognition. Use Google Chrome, or type the Urdu answer with an Urdu keyboard.",
+  "aborted":""
+};
 function micInto(el,lang,btn,onEnd){
   if(btn.dataset.on){E.stop();return}
+  const langs=lang==="ur-PK"?["ur-PK","ur-IN","ur"]:[lang];
+  let msg=btn.parentNode.querySelector(".micmsg");
+  if(!msg){msg=document.createElement("div");msg.className="muted micmsg";msg.style.width="100%";btn.parentNode.appendChild(msg)}
   const base=el.value?el.value.trim()+" ":"";
-  const r=E.listen((t)=>{el.value=base+t},(err)=>{delete btn.dataset.on;btn.classList.remove("on");btn.textContent="Start microphone";if(!err||typeof err!=="string")onEnd&&onEnd()},lang);
-  if(r){btn.dataset.on="1";btn.classList.add("on");btn.textContent="Listening... (press to stop)"}
+  let li=0,lastErr="",retry=false,heard=false;
+  function reset(){delete btn.dataset.on;btn.classList.remove("on");btn.textContent="Start microphone"}
+  function start(){
+    retry=false;lastErr="";
+    const r=E.listen(txt=>{heard=true;el.value=base+txt;msg.textContent=""},(x)=>{
+      if(typeof x==="string"){lastErr=x;if(x==="language-not-supported"&&li<langs.length-1){retry=true}return}
+      if(retry){li++;msg.textContent="Trying "+langs[li]+"...";setTimeout(start,150);return}
+      reset();
+      if(lastErr&&lastErr!=="aborted"){msg.innerHTML="<b>Microphone problem ("+esc(lastErr)+"):</b> "+esc(MICERR[lastErr]||"Unknown error. Try Google Chrome.");return}
+      if(!heard&&!lastErr){msg.textContent=MICERR["no-speech"];return}
+      onEnd&&onEnd();
+    },langs[li]);
+    if(r){btn.dataset.on="1";btn.classList.add("on");btn.textContent="Listening ("+langs[li]+")... press Space to stop";if(!retry)msg.textContent=""}
+  }
+  start();
 }
 
 /* ---------- TRANSLATION DRILL ---------- */
