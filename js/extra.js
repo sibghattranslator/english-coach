@@ -69,12 +69,13 @@ function drill(mode){
     E.save();
   }
   function show(){
-    checked=false;const it=queue[0],p=it.p,u2e=mode==="u2e";
+    checked=false;window.onkeydown=null;const it=queue[0],p=it.p,u2e=mode==="u2e";
     app.innerHTML=`<p><a href="#translate">&larr; Back</a> &nbsp; <span class="muted">Remaining: ${queue.length} of ${total}${it.tries?` &nbsp;|&nbsp; retry ${it.tries}`:""}</span></p>
     <div class="bar"><i style="width:${(total-queue.length)/total*100}%"></i></div>
     <div class="card"><div class="muted">${u2e?"Say this in English:":"Say this in Urdu:"}</div>
     ${u2e?`<div style="font-size:1.6rem;direction:rtl;text-align:right;line-height:2">${esc(p[0])}</div><button class="alt" id="hear">Listen (Urdu)</button>`
          :`<div style="font-size:1.4rem">${esc(p[1].split("|")[0])}</div><button class="alt" id="hear">Listen (English)</button>`}</div>
+    <div id="act" class="row" style="margin:4px 0 8px"></div>
     <div class="card"><textarea id="ans" rows="3" ${u2e?"":'dir="rtl" style="font-size:1.3rem"'} placeholder="${u2e?"Speak or type your English sentence...":"Speak or type your Urdu sentence..."}"></textarea>
     <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check</button><button class="alt" id="skip">Show answer</button></div></div><div id="res"></div>`;
     $("#hear").onclick=()=>u2e?sayUr(p[0]):window.say(p[1].split("|")[0]);
@@ -110,8 +111,10 @@ function drill(mode){
       if(info&&info.online===false)html+=`<div class="note">Online grammar checker was not reachable; only built-in rules were used.</div>`;
     }
     html+=`<div class="card"><b>Model answer:</b>${u2e?`<div style="font-size:1.1rem">${ref.map(esc).join("<br>")}</div><button class="alt" id="hm">Listen</button>`:`<div dir="rtl" style="font-size:1.4rem;text-align:right">${esc(p[0])}</div><button class="alt" id="hm">Listen (Urdu)</button>`}</div>`;
-    html+=`<div class="row">${pass?`<button id="nx">Next sentence</button>`:`<button id="again">Try again now</button><button class="alt" id="later">Next (this comes back later)</button>`}</div>`;
+    $("#act").innerHTML=pass?`<button id="nx">Next sentence &rarr; (Enter)</button>`:`<button id="again">Try again now</button><button class="alt" id="later">Next (comes back later) &rarr;</button>`;
     $("#res").innerHTML=html;
+    app.scrollTop=0;
+    window.onkeydown=e=>{if(e.key==="Enter"&&e.target.tagName!=="TEXTAREA"){const b=$("#nx")||$("#later");if(b)b.click()}};
     $("#hm").onclick=()=>u2e?window.say(ref[0]):sayUr(p[0]);
     if(!pass&&!skipped){errors.forEach(x=>mistake("Translation",x.wrong,x.right||"",x.why));if(!errors.length&&text)mistake("Translation",text,u2e?ref[0]:p[0],"Different from the model answer");E.save()}
     if(pass){$("#nx").onclick=()=>{hist.push(queue.shift());next()}}
