@@ -60,7 +60,7 @@ function translate(a){
 function drill(mode){
   const PAIRS=window.PAIRS;let queue=shuffle(PAIRS).slice(0,10).map(p=>({p,tries:0}));const total=queue.length,hist=[];
   let checked=false;
-  function next(){queue.length?show():finish()}
+  function next(auto){queue.length?show(auto):finish()}
   function finish(){
     E.touch(4);E.S();
     app.innerHTML=`<h1>Round complete</h1><div class="card"><div class="big">${total}/${total}</div>All sentences correct.
@@ -68,8 +68,8 @@ function drill(mode){
     <div class="row"><button onclick="location.reload()">New round</button><a href="#translate" class="btn alt" style="text-decoration:none;padding:9px 16px;border:1px solid var(--teal);border-radius:8px;color:var(--teal)">Back</a></div>`;
     E.save();
   }
-  function show(){
-    checked=false;window.onkeydown=null;const it=queue[0],p=it.p,u2e=mode==="u2e";
+  function show(auto){
+    checked=false;const it=queue[0],p=it.p,u2e=mode==="u2e";
     app.innerHTML=`<p><a href="#translate">&larr; Back</a> &nbsp; <span class="muted">Remaining: ${queue.length} of ${total}${it.tries?` &nbsp;|&nbsp; retry ${it.tries}`:""}</span></p>
     <div class="bar"><i style="width:${(total-queue.length)/total*100}%"></i></div>
     <div class="card"><div class="muted">${u2e?"Say this in English:":"Say this in Urdu:"}</div>
@@ -77,12 +77,26 @@ function drill(mode){
          :`<div style="font-size:1.4rem">${esc(p[1].split("|")[0])}</div><button class="alt" id="hear">Listen (English)</button>`}</div>
     <div id="act" class="row" style="margin:4px 0 8px"></div>
     <div class="card"><textarea id="ans" rows="3" ${u2e?"":'dir="rtl" style="font-size:1.3rem"'} placeholder="${u2e?"Speak or type your English sentence...":"Speak or type your Urdu sentence..."}"></textarea>
-    <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check</button><button class="alt" id="skip">Show answer</button></div></div><div id="res"></div>`;
+    <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check</button><button class="alt" id="skip">Show answer</button></div>
+    <div class="muted">Keys: <b>Space</b> = start / stop microphone (answer is checked when you stop) &nbsp;|&nbsp; <b>Enter</b> = check or next &nbsp;|&nbsp; you can also edit the text and press Check again.</div></div><div id="res"></div>`;
     $("#hear").onclick=()=>u2e?sayUr(p[0]):window.say(p[1].split("|")[0]);
     $("#mic").onclick=()=>micInto($("#ans"),u2e?"en-GB":"ur-PK",$("#mic"),()=>{if($("#ans").value.trim()&&!checked)check()});
     $("#chk").onclick=check;
     $("#skip").onclick=()=>result(false,"",[],null,true);
     if(!u2e&&hasVoice("en"))setTimeout(()=>window.say(p[1].split("|")[0]),300);
+    window.onkeydown=e=>{
+      const typing=e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT";
+      if(e.key===" "&&!typing){
+        e.preventDefault();const n=$("#nx"),ag=$("#again");
+        if(n){n.click();return}if(ag){ag.click();return}
+        $("#mic")&&$("#mic").click();return}
+      if(e.key==="Enter"&&!e.shiftKey&&(!typing||e.target.id==="ans")){
+        e.preventDefault();const n=$("#nx");
+        if(n){n.click();return}
+        if($("#ans")&&$("#ans").value.trim()){checked=false;check()}
+      }
+    };
+    if(auto&&u2e)setTimeout(()=>{const m=$("#mic");if(m&&!m.dataset.on)m.click()},250);
   }
   async function check(){
     if(checked)return;const text=$("#ans").value.trim();if(!text)return;checked=true;E.stop();
@@ -111,16 +125,16 @@ function drill(mode){
       if(info&&info.online===false)html+=`<div class="note">Online grammar checker was not reachable; only built-in rules were used.</div>`;
     }
     html+=`<div class="card"><b>Model answer:</b>${u2e?`<div style="font-size:1.1rem">${ref.map(esc).join("<br>")}</div><button class="alt" id="hm">Listen</button>`:`<div dir="rtl" style="font-size:1.4rem;text-align:right">${esc(p[0])}</div><button class="alt" id="hm">Listen (Urdu)</button>`}</div>`;
-    $("#act").innerHTML=pass?`<button id="nx">Next sentence &rarr; (Enter)</button>`:`<button id="again">Try again now</button><button class="alt" id="later">Next (comes back later) &rarr;</button>`;
+    $("#act").innerHTML=pass?`<button id="nx">Next sentence &rarr; (Space)</button>`:`<button id="again">Try again (Space)</button><button class="alt" id="later">Next (comes back later) &rarr;</button>`;
     $("#res").innerHTML=html;
     app.scrollTop=0;
-    window.onkeydown=e=>{if(e.key==="Enter"&&e.target.tagName!=="TEXTAREA"){const b=$("#nx")||$("#later");if(b)b.click()}};
+
     $("#hm").onclick=()=>u2e?window.say(ref[0]):sayUr(p[0]);
     if(!pass&&!skipped){errors.forEach(x=>mistake("Translation",x.wrong,x.right||"",x.why));if(!errors.length&&text)mistake("Translation",text,u2e?ref[0]:p[0],"Different from the model answer");E.save()}
-    if(pass){$("#nx").onclick=()=>{hist.push(queue.shift());next()}}
+    if(pass){$("#nx").onclick=()=>{hist.push(queue.shift());next(true)}}
     else{
-      $("#again").onclick=()=>{it.tries++;show()};
-      $("#later").onclick=()=>{it.tries++;queue.push(queue.shift());next()};
+      $("#again").onclick=()=>{it.tries++;show(true)};
+      $("#later").onclick=()=>{it.tries++;queue.push(queue.shift());next(true)};
     }
   }
   show();
