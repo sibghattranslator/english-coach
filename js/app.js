@@ -15,7 +15,7 @@ const touch=(n=1)=>{S.days[today()]=(S.days[today()]||0)+n;save()};
 function streak(){let n=0;const d=new Date();for(;;){const k=d.toISOString().slice(0,10);if(S.days[k]){n++;d.setDate(d.getDate()-1)}else if(n===0&&k===today()){d.setDate(d.getDate()-1)}else break}return n}
 
 /* ---------- router ---------- */
-const routes={home,grammar,speak,vocab,exam,progress,translate:a=>window.ECX.translate(a),subjects:a=>window.ECX.subjects(a)};
+const routes={home,grammar,speak,vocab,exam,progress,translate:a=>window.ECX.translate(a),interview:a=>window.ECX.interview(a),subjects:a=>window.ECX.subjects(a)};
 function route(){
   const h=(location.hash||"#home").slice(1).split("/");
   const name=routes[h[0]]?h[0]:"home";
@@ -30,6 +30,7 @@ function buildSide(name,path){
   const MENU=[
     {k:"home",t:"Home"},
     {k:"speak",t:"Speak"},
+    {k:"interview",t:"Interview",kids:[["css","CSS / PMS board"],["freelance","Freelance client"],["job","Job interview"]]},
     {k:"translate",t:"Translate",kids:[["u2e","Urdu to English"],["e2u","English to Urdu"]]},
     {k:"grammar",t:"Grammar",kids:pairs(window.GRAMMAR)},
     {k:"subjects",t:"CSS Subjects",kids:pairs(window.SUBJECTS||[])},
@@ -65,6 +66,7 @@ function home(){
     <div>${esc(w[1])} &nbsp;|&nbsp; ${esc(w[2])}</div><div class="muted">${esc(w[3])}</div></div>
   <h2>Start here</h2>
   <div class="grid">
+    <a class="tile" href="#interview"><b>Spoken interview</b><small>The interviewer speaks and asks follow-up questions. You answer aloud.</small></a>
     <a class="tile" href="#translate"><b>Translation practice</b><small>Urdu to English and English to Urdu, 10 sentences, repeated until correct.</small></a>
     <a class="tile" href="#subjects"><b>CSS subjects</b><small>IR, Gender Studies, European History, Criminology and compulsory subjects. Listen, quiz, speak.</small></a>
     <a class="tile" href="#speak"><b>Speak and get corrected</b><small>Use the microphone or type. Instant grammar correction.</small></a>
@@ -208,9 +210,9 @@ function diffHTML(a,b){
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null;
 function stopSpeech(){try{rec&&rec.stop()}catch(e){}rec=null;try{speechSynthesis.cancel()}catch(e){}}
 window.say=function(t,lang){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=lang||"en-GB";u.rate=.9;speechSynthesis.speak(u)}catch(e){alert("Speech playback is not supported in this browser.")}};
-function listen(onText,onEnd,lang){
+function listen(onText,onEnd,lang,cont){
   if(!SR){alert("Voice typing needs Google Chrome or Microsoft Edge. You can type instead.");return null}
-  const r=new SR();r.lang=lang||"en-GB";r.interimResults=true;r.continuous=false;
+  const r=new SR();r.lang=lang||"en-GB";r.interimResults=true;r.continuous=!!cont;
   r.onresult=e=>{let s="";for(const x of e.results)s+=x[0].transcript;onText(s,e.results[e.results.length-1].isFinal)};
   r.onend=onEnd;r.onerror=e=>{onEnd(e.error)};r.start();return r;
 }
@@ -218,13 +220,14 @@ function speak(){
   const cats=Object.keys(SPEAK_TOPICS);
   app.innerHTML=`<h1>Speak and get corrected</h1>
   <p class="muted">1) Pick a topic. 2) Press the microphone and speak 3 to 5 sentences (or type). 3) Press Check. Correct sentences are saved in your mistake log. Use Chrome or Edge for the microphone.</p>
+  <div class="duo"><div class="L">
   <div class="card"><div class="row"><select id="cat" style="max-width:260px">${cats.map(c=>`<option>${esc(c)}</option>`).join("")}</select><button class="alt" id="newq">New question</button></div>
   <div class="note" id="q" style="font-size:1.1rem"></div>
   <div class="row"><button class="alt" id="hear">Listen to question</button></div></div>
   <div class="card"><textarea id="txt" rows="5" placeholder="Press the microphone and speak, or type here..."></textarea>
   <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check my English</button><button class="alt" id="clr">Clear</button></div>
   <div class="muted">Tip: speak slowly. The microphone may auto-correct some words, so also practise by typing what you really say.</div></div>
-  <div id="res"></div>`;
+  </div><div class="R"><div id="res"><div class="card muted">Your correction will appear here.</div></div></div></div>`;
   const pick=()=>{const l=SPEAK_TOPICS[$("#cat").value];$("#q").textContent=l[Math.floor(Math.random()*l.length)]};
   $("#cat").onchange=pick;$("#newq").onclick=pick;pick();
   $("#hear").onclick=()=>window.say($("#q").textContent);
@@ -357,6 +360,6 @@ function progress(){
   $("#rs").onclick=()=>{if(confirm("Delete all progress?")){S={quiz:{},mistakes:[],days:{},known:{}};save();progress()}};
 }
 
-window.EC={esc,shuffle,S:()=>S,save,touch,today,localCheck,ltCheck,applyLT,diffHTML,runQuiz,stop:stopSpeech,listen:(a,b,c)=>{rec=listen(a,b,c);return rec},$,app};
+window.EC={esc,shuffle,S:()=>S,save,touch,today,localCheck,ltCheck,applyLT,diffHTML,runQuiz,stop:stopSpeech,listen:(a,b,c,d)=>{rec=listen(a,b,c,d);return rec},$,app};
 window.addEventListener("load",route);
 })();

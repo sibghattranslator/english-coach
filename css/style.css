@@ -74,3 +74,8 @@ main#app>*{max-width:900px}
   body.menu-open #sidebar{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.4)}
   main#app{padding:14px 14px 40px}
 }
+
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;max-width:none!important;align-items:start}
+main#app>.duo{max-width:none}
+.duo .R{position:sticky;top:0;max-height:calc(100vh - 110px);overflow-y:auto;padding-right:4px}
+@media (max-width:1000px){.duo{grid-template-columns:1fr}.duo .R{position:static;max-height:none;overflow:visible}}

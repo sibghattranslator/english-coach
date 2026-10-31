@@ -97,13 +97,15 @@ function drill(mode){
     checked=false;const it=queue[0],p=it.p,u2e=mode==="u2e";
     app.innerHTML=`<p><a href="#translate">&larr; Back</a> &nbsp; <span class="muted">Remaining: ${queue.length} of ${total}${it.tries?` &nbsp;|&nbsp; retry ${it.tries}`:""}</span></p>
     <div class="bar"><i style="width:${(total-queue.length)/total*100}%"></i></div>
+    <div class="duo"><div class="L">
     <div class="card"><div class="muted">${u2e?"Say this in English:":"Say this in Urdu:"}</div>
     ${u2e?`<div style="font-size:1.6rem;direction:rtl;text-align:right;line-height:2">${esc(p[0])}</div><button class="alt" id="hear">Listen (Urdu)</button>`
          :`<div style="font-size:1.4rem">${esc(p[1].split("|")[0])}</div><button class="alt" id="hear">Listen (English)</button>`}</div>
     <div id="act" class="row" style="margin:4px 0 8px"></div>
     <div class="card"><textarea id="ans" rows="3" ${u2e?"":'dir="rtl" style="font-size:1.3rem"'} placeholder="${u2e?"Speak or type your English sentence...":"Speak or type your Urdu sentence..."}"></textarea>
     <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check</button><button class="alt" id="skip">Show answer</button></div>
-    <div class="muted">Keys: <b>Space</b> = start / stop microphone (answer is checked when you stop) &nbsp;|&nbsp; <b>Enter</b> = check or next &nbsp;|&nbsp; you can also edit the text and press Check again.</div></div><div id="res"></div>`;
+    <div class="muted">Keys: <b>Space</b> = start / stop microphone (answer is checked when you stop) &nbsp;|&nbsp; <b>Enter</b> = check or next &nbsp;|&nbsp; you can also edit the text and press Check again.</div></div>
+    </div><div class="R"><div id="res"><div class="card muted">Your correction and the model answer will appear here, beside the question.</div></div></div></div>`;
     $("#hear").onclick=()=>u2e?sayUr(p[0]):window.say(p[1].split("|")[0]);
     $("#mic").onclick=()=>micInto($("#ans"),u2e?"en-GB":"ur-PK",$("#mic"),()=>{if($("#ans").value.trim()&&!checked)check()});
     $("#chk").onclick=check;
@@ -192,10 +194,10 @@ function subjects(a){
     E.runQuiz(s.name+" quiz",qs,r=>{r.wrong.forEach(w=>mistake(s.name,w.q,w.o[w.a],w.e));E.touch(2);E.save()},()=>{location.hash="#subjects/"+s.id+"/quiz";route()},"#subjects/"+s.id);
   }else{
     let cur=null;
-    app.innerHTML=head+`<div class="card"><div class="muted">Answer in English, 4 to 6 sentences:</div><div class="note" id="oq" style="font-size:1.15rem"></div>
+    app.innerHTML=head+`<div class="duo"><div class="L"><div class="card"><div class="muted">Answer in English, 4 to 6 sentences:</div><div class="note" id="oq" style="font-size:1.15rem"></div>
     <div class="row"><button class="alt" id="nq">Another question</button><button class="alt" id="hq">Listen to question</button></div></div>
     <div class="card"><textarea id="oa" rows="6" placeholder="Speak or type your answer..."></textarea>
-    <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check my answer</button></div></div><div id="res"></div>`;
+    <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check my answer</button></div></div></div><div class="R"><div id="res"><div class="card muted">Key points, corrections and the model answer will appear here.</div></div></div></div>`;
     const pick=()=>{const o=s.oral[Math.floor(Math.random()*s.oral.length)];cur=o;$("#oq").textContent=o.q;$("#res").innerHTML="";$("#oa").value=""};
     pick();$("#nq").onclick=pick;$("#hq").onclick=()=>window.say(cur.q);
     $("#mic").onclick=()=>micInto($("#oa"),"en-GB",$("#mic"));
@@ -212,6 +214,118 @@ function subjects(a){
     };
   }
 }
+
+/* ---------- SPOKEN INTERVIEW ---------- */
+function interview(a){
+  const D=window.INTERVIEWS,key=a[0];
+  if(!D[key]){
+    app.innerHTML=`<h1>Spoken Interview</h1>
+    <p class="muted">The interviewer speaks to you. You answer aloud. After each answer you see your grammar corrections on the right, and the interviewer asks a follow-up question based on what you said.</p>
+    <div class="grid">${Object.keys(D).map(k=>`<a class="tile" href="#interview/${k}"><b>${esc(D[k].name)}</b><small>${esc(D[k].desc)}</small></a>`).join("")}</div>
+    <div class="card"><b>How it works</b><ol><li>Press <b>Begin</b>. The interviewer speaks the question (turn your volume up).</li><li>The microphone starts automatically. Answer in full sentences, 3 to 6 sentences.</li><li>Press <b>Space</b> (or Done) when you finish. Your answer is checked, then the next question comes.</li><li>The interviewer picks follow-up questions from your own words, like a real board. This is a script, not a real person or AI.</li><li>You can also type your answer and press Enter.</li></ol></div>`;
+    return;
+  }
+  const iv=D[key],G=window.INTERVIEW_GENERIC;
+  let ti=0,asked=0,probed=false,used=new Set(),log=[],busy=false,finished=false,speaking=false,listening=false,cur="",qn=0,began=false;
+  const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+  app.innerHTML=`<p><a href="#interview">&larr; Back</a> &nbsp; <b>${esc(iv.name)}</b></p>
+  <div class="duo"><div class="L">
+   <div class="card"><div class="muted" id="who">Interviewer</div>
+     <div id="q" style="font-size:1.35rem;min-height:4.5em">Press Begin when you are ready. Allow the microphone if the browser asks.</div>
+     <div class="row"><button id="begin">Begin interview</button><button class="alt" id="rep" disabled>Repeat question</button><button class="alt" id="skp" disabled>Skip</button><button class="alt" id="end" disabled>End interview</button></div></div>
+   <div class="card"><textarea id="ans" rows="6" placeholder="Your answer appears here while you speak. You can also type."></textarea>
+     <div class="row"><button class="mic" id="mic" disabled>Start microphone</button><button id="done" disabled>Done answering (Space)</button></div>
+     <div class="muted micmsg" id="st"></div>
+     <div class="muted">Keys: <b>Space</b> = start / finish speaking &nbsp;|&nbsp; <b>Enter</b> = send typed answer</div></div>
+  </div><div class="R" id="logpane"><div id="log"><div class="card muted">The conversation and your corrections will appear here.</div></div></div></div>`;
+  const st=m=>{const e=$("#st");if(e)e.innerHTML=m};
+  const alive=()=>!!$("#ans");
+  function speakText(text,cb){
+    let fired=false;const once=()=>{if(fired)return;fired=true;speaking=false;cb&&alive()&&cb()};
+    speaking=true;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-GB";u.rate=.95;
+      const v=speechSynthesis.getVoices().find(v=>/en-GB/i.test(v.lang));if(v)u.voice=v;
+      u.onend=once;u.onerror=once;speechSynthesis.speak(u);setTimeout(once,Math.max(2500,text.length*95+2000));
+    }catch(e){once()}
+  }
+  function enable(on){["rep","skp","end","mic","done"].forEach(id=>{const b=$("#"+id);if(b)b.disabled=!on})}
+  function ask(text,pre){
+    if(!alive())return;cur=text;busy=false;qn++;
+    $("#q").textContent=text;$("#ans").value="";st("The interviewer is speaking...");
+    speakText((pre?pre+" ":"")+text,()=>startMic());
+  }
+  let base="";
+  function startMic(){
+    if(finished||!alive()||listening||busy)return;
+    base=$("#ans").value?$("#ans").value.trim()+" ":"";let err="",heard=false;
+    const r=E.listen(txt=>{heard=true;$("#ans").value=base+txt},(x)=>{
+      if(typeof x==="string"){err=x;return}
+      listening=false;const m=$("#mic");if(m){m.classList.remove("on");m.textContent="Start microphone"}
+      if(!alive())return;
+      if(err&&err!=="aborted"&&err!=="no-speech"){st("<b>Microphone problem ("+esc(err)+"):</b> "+esc(MICERR[err]||"Try Google Chrome.")+" You can type your answer and press Enter.");return}
+      if($("#ans").value.trim()){submit()}else{st(MICERR["no-speech"])}
+    },"en-GB",true);
+    if(r){listening=true;const m=$("#mic");m.classList.add("on");m.textContent="Listening... (Space = done)";st("Listening... answer now.")}
+    else st("Could not start the microphone. Press Space to try again, or type your answer.");
+  }
+  async function submit(){
+    if(busy||finished)return;const text=$("#ans").value.trim();
+    if(!text){st("Please say or type an answer first.");return}
+    busy=true;E.stop();listening=false;enable(false);st("Checking your answer...");
+    const g=await gradeEnglish(text);
+    const words=text.split(/\s+/).length,same=g.final.toLowerCase()===text.replace(/\s+/g," ").trim().toLowerCase();
+    g.errors.forEach(x=>mistake("Interview",x.wrong,x.right||"",x.why));
+    log.push({q:cur,text,errors:g.errors,words});
+    const html=`<div class="card"><div class="muted">Interviewer</div><div>${esc(cur)}</div>
+      <div class="muted" style="margin-top:8px">You (${words} words)</div><div>${same?esc(text):E.diffHTML(text,g.final)}</div>
+      ${same?`<div class="note ok">No grammar mistakes found.</div>`:`<div class="note err"><b>Corrected:</b> ${esc(g.final)}</div>`}
+      ${g.errors.map(x=>`<div class="note err"><span class="del">${esc(x.wrong)}</span> &rarr; <span class="add">${esc(x.right||"?")}</span><div class="muted">${esc(x.why)}</div></div>`).join("")}
+      ${words<20?`<div class="muted">Tip: a board expects 3 to 6 full sentences (about 30 to 80 words).</div>`:""}</div>`;
+    const lg=$("#log");if(lg){if(log.length===1)lg.innerHTML="";lg.insertAdjacentHTML("afterbegin",html)}
+    E.touch(2);E.save();enable(true);
+    next(text,words);
+  }
+  function next(text,words){
+    const topic=iv.topics[ti];
+    if(words<8&&!probed){probed=true;busy=false;return ask("Please answer in complete sentences and explain a little more. "+topic.q,"Hmm.")}
+    if(asked<2){
+      let fq=null;
+      for(const [re,q] of topic.follow){if(!used.has(q)&&new RegExp(re,"i").test(text)){fq=q;break}}
+      if(!fq){const left=G.filter(q=>!used.has(q));if(left.length)fq=pick(left)}
+      if(fq){used.add(fq);asked++;return ask(fq,pick(["Thank you.","I see.","Interesting.","Good.","Alright."]))}
+    }
+    ti++;asked=0;probed=false;
+    if(ti>=iv.topics.length)return finish();
+    ask(iv.topics[ti].q,"Thank you. Let us move on.");
+  }
+  function finish(){
+    finished=true;E.stop();listening=false;
+    const all=log.flatMap(l=>l.errors),avg=log.length?Math.round(log.reduce((s,l)=>s+l.words,0)/log.length):0;
+    const cnt={};all.forEach(x=>{const k=(x.wrong||"")+" -> "+(x.right||"");cnt[k]=(cnt[k]||0)+1});
+    const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const html=`<div class="card" style="border-color:var(--teal)"><b>Interview finished</b>
+      <div>Questions answered: <b>${log.length}</b> &nbsp;|&nbsp; Grammar mistakes: <b>${all.length}</b> &nbsp;|&nbsp; Average answer: <b>${avg} words</b></div>
+      ${top.length?`<div class="muted" style="margin-top:6px">Most common mistakes:</div>${top.map(([k,n])=>`<div>${esc(k)} <span class="muted">(${n}x)</span></div>`).join("")}`:`<div class="note ok">No repeated mistakes. Well done!</div>`}
+      <div class="muted" style="margin-top:6px">All mistakes are saved in your Progress page.</div>
+      <div class="row"><button onclick="location.reload()">Interview again</button></div></div>`;
+    const lg=$("#log");if(lg){if(!log.length)lg.innerHTML="";lg.insertAdjacentHTML("afterbegin",html)}
+    $("#q").textContent=iv.closing;st("");enable(false);speakText(iv.closing);E.touch(3);E.save();
+  }
+  $("#begin").onclick=()=>{if(began)return;began=true;$("#begin").disabled=true;enable(true);$("#who").textContent="Interviewer";
+    $("#q").textContent=iv.opening;speakText(iv.opening,()=>ask(iv.topics[0].q))};
+  $("#rep").onclick=()=>{if(finished)return;E.stop();listening=false;speakText(cur,()=>startMic())};
+  $("#skp").onclick=()=>{if(finished)return;E.stop();listening=false;busy=false;ti++;asked=0;probed=false;if(ti>=iv.topics.length)finish();else ask(iv.topics[ti].q,"Let us move on.")};
+  $("#end").onclick=()=>{try{speechSynthesis.cancel()}catch(e){}E.stop();listening=false;finish()};
+  $("#done").onclick=()=>{listening?E.stop():submit()};
+  $("#mic").onclick=()=>{listening?E.stop():startMic()};
+  window.onkeydown=e=>{
+    if(!$("#ans")||!began||finished)return;
+    const typing=e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT";
+    if(e.key===" "&&!typing){e.preventDefault();if(speaking){try{speechSynthesis.cancel()}catch(x){}return}if(listening)E.stop();else if($("#ans").value.trim())submit();else startMic();return}
+    if(e.key==="Enter"&&!e.shiftKey&&e.target.id==="ans"){e.preventDefault();if(listening)E.stop();else submit()}
+  };
+}
+
 function route(){window.dispatchEvent(new Event("hashchange"))}
-window.ECX={translate,subjects};
+window.ECX={translate,subjects,interview};
 })();

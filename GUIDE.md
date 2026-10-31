@@ -13,6 +13,7 @@ english-coach/
     data-exam.js        CONTENT: speaking topics, essay topics, precis/essay/interview guides, phrases
     data-translate.js   CONTENT: Urdu/English sentence pairs
     data-subjects.js    CONTENT: CSS subjects (notes, MCQs, oral questions)
+    data-interview.js   CONTENT: spoken interview scripts (questions + follow-up rules)
     app.js              CODE: menu/router, Grammar, Speak, Vocabulary, Exam, Progress, grammar checker rules
     extra.js            CODE: Translate drill and Subjects pages
   README.md             Short intro
@@ -72,3 +73,6 @@ This is what fixes things like "I am agree" instantly, without internet.
 
 ## Microphone asks every time?
 A page opened from a file (file://) is asked for the microphone each time. Use START.bat (localhost) or the GitHub Pages https link; both remember your choice after you click "Allow while visiting the site".
+
+## Interviews (data-interview.js)
+Each interview has `topics`. A topic has a main question `q` and `follow` rules: `["word1|word2","follow-up question"]`. If your answer contains one of the words, the interviewer asks that follow-up. Otherwise it asks a general follow-up from `INTERVIEW_GENERIC`. After two follow-ups it moves to the next topic. To add a new interview, copy a block (css / freelance / job) and change the name and questions; it appears in the Interview menu after you add it to the list in `buildSide` in `app.js`.
