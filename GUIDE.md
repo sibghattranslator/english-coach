@@ -76,3 +76,6 @@ A page opened from a file (file://) is asked for the microphone each time. Use S
 
 ## Interviews (data-interview.js)
 Each interview has `topics`. A topic has a main question `q` and `follow` rules: `["word1|word2","follow-up question"]`. If your answer contains one of the words, the interviewer asks that follow-up. Otherwise it asks a general follow-up from `INTERVIEW_GENERIC`. After two follow-ups it moves to the next topic. To add a new interview, copy a block (css / freelance / job) and change the name and questions; it appears in the Interview menu after you add it to the list in `buildSide` in `app.js`.
+
+## Translation subjects
+Subject sentences live in `js/data-translate-subjects.js` as `[urdu, "english|alt", tag]`. Add lines with a tag from `PAIR_TAGS`. Sentences already practised are not repeated until the pool is used up.

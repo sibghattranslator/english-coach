@@ -83,19 +83,36 @@ function translate(a){
   <li>The round ends only when all 10 are correct. Mistakes are saved in your mistake log.</li></ol></div>`;
 }
 function drill(mode){
-  const PAIRS=window.PAIRS;let queue=shuffle(PAIRS).slice(0,10).map(p=>({p,tries:0}));const total=queue.length,hist=[];
+  const PAIRS=window.PAIRS,TAGS=window.PAIR_TAGS;
+  let tag="mix";try{tag=localStorage.getItem("ec_trtag")||"mix"}catch(e){}
+  if(tag!=="mix"&&!TAGS[tag])tag="mix";
+  function pick(){
+    const st=E.S();st.trSeen=st.trSeen||{};
+    let pool=tag==="mix"?PAIRS:PAIRS.filter(p=>p[2]===tag);
+    let fresh=pool.filter(p=>!st.trSeen[p[0]]);
+    if(fresh.length<10){pool.forEach(p=>delete st.trSeen[p[0]]);fresh=pool}
+    let out;
+    if(tag==="mix"){
+      const by={};shuffle(fresh).forEach(p=>(by[p[2]]=by[p[2]]||[]).push(p));
+      const keys=shuffle(Object.keys(by));out=[];
+      for(let i=0;out.length<10&&keys.some(k=>by[k][i]);i++)keys.forEach(k=>{if(by[k][i]&&out.length<10)out.push(by[k][i])});
+    }else out=shuffle(fresh).slice(0,10);
+    out.forEach(p=>st.trSeen[p[0]]=1);E.save();
+    return shuffle(out).map(p=>({p,tries:0}));
+  }
+  let queue=pick();const total=queue.length,hist=[];
   let checked=false;
   function next(auto){queue.length?show(auto):finish()}
   function finish(){
     E.touch(4);E.S();
     app.innerHTML=`<h1>Round complete</h1><div class="card"><div class="big">${total}/${total}</div>All sentences correct.
     <ul>${hist.map(h=>`<li>${esc(mode==="u2e"?h.p[1].split("|")[0]:h.p[0])} <span class="muted">(${h.tries===0?"first time":h.tries+" retry"+(h.tries>1?"ies":"")})</span></li>`).join("")}</ul></div>
-    <div class="row"><button onclick="location.reload()">New round</button><a href="#translate" class="btn alt" style="text-decoration:none;padding:9px 16px;border:1px solid var(--teal);border-radius:8px;color:var(--teal)">Back</a></div>`;
-    E.save();
+    <div class="row"><button id="nr">New round</button><a href="#translate" class="btn alt" style="text-decoration:none;padding:9px 16px;border:1px solid var(--teal);border-radius:8px;color:var(--teal)">Back</a></div>`;
+    E.save();$("#nr").onclick=()=>drill(mode);
   }
   function show(auto){
     checked=false;const it=queue[0],p=it.p,u2e=mode==="u2e";
-    app.innerHTML=`<p><a href="#translate">&larr; Back</a> &nbsp; <span class="muted">Remaining: ${queue.length} of ${total}${it.tries?` &nbsp;|&nbsp; retry ${it.tries}`:""}</span></p>
+    app.innerHTML=`<p><a href="#translate">&larr; Back</a> &nbsp; <span class="muted">Remaining: ${queue.length} of ${total}${it.tries?` &nbsp;|&nbsp; retry ${it.tries}`:""}</span> &nbsp; <select id="tag" style="width:auto;padding:4px 8px"><option value="mix">Mixed (all subjects)</option>${Object.keys(TAGS).map(k=>`<option value="${k}"${k===tag?" selected":""}>${TAGS[k]}</option>`).join("")}</select> <span class="badge">${esc(TAGS[p[2]]||"")}</span></p>
     <div class="bar"><i style="width:${(total-queue.length)/total*100}%"></i></div>
     <div class="duo"><div class="L">
     <div class="card"><div class="muted">${u2e?"Say this in English:":"Say this in Urdu:"}</div>
@@ -106,6 +123,7 @@ function drill(mode){
     <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check</button><button class="alt" id="skip">Show answer</button></div>
     <div class="muted">Keys: <b>Space</b> = start / stop microphone (answer is checked when you stop) &nbsp;|&nbsp; <b>Enter</b> = check or next &nbsp;|&nbsp; you can also edit the text and press Check again.</div></div>
     </div><div class="R"><div id="res"><div class="card muted">Your correction and the model answer will appear here, beside the question.</div></div></div></div>`;
+    $("#tag").onchange=e=>{try{localStorage.setItem("ec_trtag",e.target.value)}catch(x){}tag=e.target.value;drill(mode)};
     $("#hear").onclick=()=>u2e?sayUr(p[0]):window.say(p[1].split("|")[0]);
     $("#mic").onclick=()=>micInto($("#ans"),u2e?"en-GB":"ur-PK",$("#mic"),()=>{if($("#ans").value.trim()&&!checked)check()});
     $("#chk").onclick=check;
@@ -161,7 +179,7 @@ function drill(mode){
     if(pass){$("#nx").onclick=()=>{hist.push(queue.shift());next(true)}}
     else{
       $("#again").onclick=()=>{it.tries++;show(true)};
-      $("#later").onclick=()=>{it.tries++;queue.push(queue.shift());next(true)};
+      $("#later").onclick=()=>{it.tries++;const f=queue.shift();queue.splice(Math.min(queue.length,3),0,f);next(true)};
     }
   }
   show();
