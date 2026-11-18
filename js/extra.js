@@ -39,7 +39,7 @@ const MICERR={
   "not-allowed":"The microphone is blocked. Click the lock icon in the address bar, set Microphone to Allow, and reload.",
   "service-not-allowed":"The browser blocked speech recognition. Use Google Chrome and open the app from START.bat (localhost).",
   "audio-capture":"No microphone found. Plug in or enable a microphone.",
-  "no-speech":"I did not hear anything. Press Space and speak clearly.",
+  "no-speech":"I did not hear anything. Tap the microphone button and speak clearly (allow the microphone if Chrome asks).",
   "network":"Speech recognition needs the internet (Chrome sends audio to Google). Check your connection.",
   "language-not-supported":"This browser does not support Urdu speech recognition. Use Google Chrome, or type the Urdu answer with an Urdu keyboard.",
   "aborted":""
@@ -62,7 +62,7 @@ function micInto(el,lang,btn,onEnd){
       if(!heard&&!lastErr){msg.textContent=MICERR["no-speech"];return}
       onEnd&&onEnd();
     },langs[li]);
-    if(r){btn.dataset.on="1";btn.classList.add("on");btn.textContent="Listening ("+langs[li]+")... press Space to stop";if(!retry)msg.textContent=""}
+    if(r){btn.dataset.on="1";btn.classList.add("on");btn.textContent="Listening ("+langs[li]+")... tap here to stop";if(!retry)msg.textContent=""}
   }
   start();
 }
@@ -121,7 +121,7 @@ function drill(mode){
     <div id="act" class="row" style="margin:4px 0 8px"></div>
     <div class="card"><textarea id="ans" rows="3" ${u2e?"":'dir="rtl" style="font-size:1.3rem"'} placeholder="${u2e?"Speak or type your English sentence...":"Speak or type your Urdu sentence..."}"></textarea>
     <div class="row"><button class="mic" id="mic">Start microphone</button><button id="chk">Check</button><button class="alt" id="skip">Show answer</button></div>
-    <div class="muted">Keys: <b>Space</b> = start / stop microphone (answer is checked when you stop) &nbsp;|&nbsp; <b>Enter</b> = check or next &nbsp;|&nbsp; you can also edit the text and press Check again.</div></div>
+    <div class="muted keyhint">Keys: <b>Space</b> = start / stop microphone (answer is checked when you stop) &nbsp;|&nbsp; <b>Enter</b> = check or next &nbsp;|&nbsp; you can also edit the text and press Check again.</div></div>
     </div><div class="R"><div id="res"><div class="card muted">Your correction and the model answer will appear here, beside the question.</div></div></div></div>`;
     $("#tag").onchange=e=>{try{localStorage.setItem("ec_trtag",e.target.value)}catch(x){}tag=e.target.value;drill(mode)};
     $("#hear").onclick=()=>u2e?sayUr(p[0]):window.say(p[1].split("|")[0]);
@@ -170,7 +170,7 @@ function drill(mode){
       if(info&&info.online===false)html+=`<div class="note">Online grammar checker was not reachable; only built-in rules were used.</div>`;
     }
     html+=`<div class="card"><b>Model answer:</b>${u2e?`<div style="font-size:1.1rem">${ref.map(esc).join("<br>")}</div><button class="alt" id="hm">Listen</button>`:`<div dir="rtl" style="font-size:1.4rem;text-align:right">${esc(p[0])}</div><button class="alt" id="hm">Listen (Urdu)</button>`}</div>`;
-    $("#act").innerHTML=pass?`<button id="nx">Next sentence &rarr; (Space)</button>`:`<button id="again">Try again (Space)</button><button class="alt" id="later">Next (comes back later) &rarr;</button>`;
+    $("#act").innerHTML=pass?`<button id="nx">Next sentence &rarr;</button>`:`<button id="again">Try again</button><button class="alt" id="later">Next (comes back later) &rarr;</button>`;
     $("#res").innerHTML=html;
     app.scrollTop=0;
 
@@ -252,9 +252,9 @@ function interview(a){
      <div id="q" style="font-size:1.35rem;min-height:4.5em">Press Begin when you are ready. Allow the microphone if the browser asks.</div>
      <div class="row"><button id="begin">Begin interview</button><button class="alt" id="rep" disabled>Repeat question</button><button class="alt" id="skp" disabled>Skip</button><button class="alt" id="end" disabled>End interview</button></div></div>
    <div class="card"><textarea id="ans" rows="6" placeholder="Your answer appears here while you speak. You can also type."></textarea>
-     <div class="row"><button class="mic" id="mic" disabled>Start microphone</button><button id="done" disabled>Done answering (Space)</button></div>
+     <div class="row"><button class="mic" id="mic" disabled>Start microphone</button><button id="done" disabled>Done answering</button></div>
      <div class="muted micmsg" id="st"></div>
-     <div class="muted">Keys: <b>Space</b> = start / finish speaking &nbsp;|&nbsp; <b>Enter</b> = send typed answer</div></div>
+     <div class="muted keyhint">Keys: <b>Space</b> = start / finish speaking &nbsp;|&nbsp; <b>Enter</b> = send typed answer</div></div>
   </div><div class="R" id="logpane"><div id="log"><div class="card muted">The conversation and your corrections will appear here.</div></div></div></div>`;
   const st=m=>{const e=$("#st");if(e)e.innerHTML=m};
   const alive=()=>!!$("#ans");
@@ -283,8 +283,8 @@ function interview(a){
       if(err&&err!=="aborted"&&err!=="no-speech"){st("<b>Microphone problem ("+esc(err)+"):</b> "+esc(MICERR[err]||"Try Google Chrome.")+" You can type your answer and press Enter.");return}
       if($("#ans").value.trim()){submit()}else{st(MICERR["no-speech"])}
     },"en-GB",true);
-    if(r){listening=true;const m=$("#mic");m.classList.add("on");m.textContent="Listening... (Space = done)";st("Listening... answer now.")}
-    else st("Could not start the microphone. Press Space to try again, or type your answer.");
+    if(r){listening=true;const m=$("#mic");m.classList.add("on");m.textContent="Listening... (tap to finish)";st("Listening... answer now.")}
+    else st("Could not start the microphone. Tap the microphone to try again, or type your answer.");
   }
   async function submit(){
     if(busy||finished)return;const text=$("#ans").value.trim();
